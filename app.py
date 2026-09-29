@@ -14,11 +14,16 @@ st.caption("Voer meerdere tickers in gescheiden door een komma (bijv: AMBA, NVDA
 # -------------------------------------------------------------
 
 def calculate_rsi(series, period=14):
-    """Bereken RSI (14)"""
+    """Bereken RSI (14) conform Wilder's Smoothing (gelijk aan TradingView/Yahoo)"""
     delta = series.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-    rs = gain / loss
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    
+    # Wilder's Smoothing via Exponential Weighted Moving Average (alpha = 1/period)
+    avg_gain = gain.ewm(alpha=1/period, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1/period, adjust=False).mean()
+    
+    rs = avg_gain / avg_loss
     return 100 - (100 / (1 + rs))
 
 def get_star_html(rating):
@@ -132,9 +137,7 @@ def analyze_ticker(symbol):
     price_change = close_price - prev['Close']
     pct_change = (price_change / prev['Close']) * 100
 
-    # -------------------------------------------------------------
     # KORTE SWINGTRADE SUPPORT & RESISTANCE (10 Handelsdagen / 2 Weken)
-    # -------------------------------------------------------------
     recent_df = df.tail(10)
     support_level = recent_df['Low'].min()
     resistance_level = recent_df['High'].max()
