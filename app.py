@@ -33,7 +33,22 @@ def get_star_html(rating):
     filled_stars = "★" * rating
     empty_stars = "☆" * (5 - rating)
     
-    return f'<span style="color: {color}; font-size: 1.2rem; font-weight: bold;">{filled_stars}{empty_stars} ({rating}/5)</span>'
+    return f'<span style="color: {color}; font-weight: bold;">{filled_stars}{empty_stars} ({rating}/5)</span>'
+
+def get_rsi_html(rsi):
+    """Genereert HTML voor RSI met specifieke kleuring:
+       > 55: Groen
+       < 45: Rood
+       Tussen 45 en 55: Grijs
+    """
+    if rsi > 55:
+        color = "#28a745"  # Groen
+    elif rsi < 45:
+        color = "#dc3545"  # Rood
+    else:
+        color = "#6c757d"  # Grijs
+
+    return f'<span style="color: {color}; font-weight: bold;">{rsi:.1f}</span>'
 
 @st.cache_data(ttl=600)
 def fetch_stock_data(symbol):
@@ -89,9 +104,9 @@ def analyze_ticker(symbol):
     if price_change > 0:
         arrow = "⬆️ UP"
     elif price_change < 0:
-        arrow = "⬇️️ DOWN"
+        arrow = "⬇️ DOWN"
     else:
-        arrow = "➡️ NEUTRAL"
+        arrow = "➡️️ NEUTRAL"
 
     return {
         "symbol": symbol,
@@ -108,7 +123,6 @@ def analyze_ticker(symbol):
 input_tickers = st.text_input("Voer ticker(s) in:", "AMBA, NVDA, TSLA, ASML.AS")
 
 if st.button("🔍 Scan Aandelen") or input_tickers:
-    # Maak een lijst van unieke tickers
     tickers_list = [t.strip().upper() for t in input_tickers.split(",") if t.strip()]
 
     if not tickers_list:
@@ -127,19 +141,22 @@ if st.button("🔍 Scan Aandelen") or input_tickers:
             st.markdown("---")
             st.subheader("📊 Resultaten Overzicht")
 
-            # 1. Samenvattingstabel bovenaan
+            # 1. Geformatteerde tabel met HTML en kleuren
             summary_data = []
             for r in results:
                 summary_data.append({
-                    "Ticker": r["symbol"],
+                    "Ticker": f"<b>{r['symbol']}</b>",
                     "Koers": f"${r['close']:.2f}",
-                    "Verandering": f"{r['pct_change']:+.2f}%",
+                    "Verandering": f"<span style='color: {'#28a745' if r['change'] > 0 else '#dc3545'};'>{r['pct_change']:+.2f}%</span>",
                     "Richting": r["arrow"],
-                    "Short-Term Stars": f"{r['st_stars']}/5",
-                    "Mid-Term Stars": f"{r['mt_stars']}/5",
-                    "RSI": f"{r['rsi']:.1f}"
+                    "Short-Term Rating": get_star_html(r['st_stars']),
+                    "Mid-Term Rating": get_star_html(r['mt_stars']),
+                    "RSI (14)": get_rsi_html(r['rsi'])
                 })
-            st.dataframe(pd.DataFrame(summary_data), use_container_width=True)
+            
+            # Zet om naar DataFrame en render als HTML-tabel
+            df_html = pd.DataFrame(summary_data).to_html(escape=False, index=False)
+            st.markdown(df_html, unsafe_allow_html=True)
 
             st.markdown("---")
             st.subheader("🔍 Gedetailleerde Kaarten")
@@ -159,4 +176,5 @@ if st.button("🔍 Scan Aandelen") or input_tickers:
                         st.write("**Mid-Term Rating:**")
                         st.markdown(get_star_html(r['mt_stars']), unsafe_allow_html=True)
                         
-                        st.caption(f"RSI (14): {r['rsi']:.2f}")
+                        st.write("**RSI (14):**")
+                        st.markdown(get_rsi_html(r['rsi']), unsafe_allow_html=True)
