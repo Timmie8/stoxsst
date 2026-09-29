@@ -70,7 +70,7 @@ def get_short_float_html(sf):
     return f'<span style="color: {color}; font-weight: bold;">{sf_pct:.2f}%</span>'
 
 # -------------------------------------------------------------
-# DATA OPHALEN & VERWERKEN (MET TIMEOUTS EN FOUTAFHANDELING)
+# DATA OPHALEN & VERWERKEN
 # -------------------------------------------------------------
 
 @st.cache_data(ttl=600)
@@ -132,8 +132,10 @@ def analyze_ticker(symbol):
     price_change = close_price - prev['Close']
     pct_change = (price_change / prev['Close']) * 100
 
-    # Support & Resistance (Laatste 60 handelsdagen)
-    recent_df = df.tail(60)
+    # -------------------------------------------------------------
+    # KORTE SWINGTRADE SUPPORT & RESISTANCE (10 Handelsdagen / 2 Weken)
+    # -------------------------------------------------------------
+    recent_df = df.tail(10)
     support_level = recent_df['Low'].min()
     resistance_level = recent_df['High'].max()
     
@@ -209,7 +211,7 @@ if st.button("🔍 Scan Aandelen") or input_tickers:
 
         if results:
             st.markdown("---")
-            st.subheader("📊 Resultaten Overzicht")
+            st.subheader("📊 Resultaten Overzicht (3-5 Dagen Swingtrade Window)")
 
             # 1. Samenvattingstabel met HTML en kleuren
             summary_data = []
@@ -224,8 +226,8 @@ if st.button("🔍 Scan Aandelen") or input_tickers:
                     "RSI (14)": get_rsi_html(r['rsi']),
                     "Put/Call Ratio": get_pcr_html(r['pcr']),
                     "Short Float": get_short_float_html(r['short_float']),
-                    "Support (60d)": f"${r['support']:.2f} (<span style='color:#dc3545;'>{r['support_pct']:.1f}%</span>)",
-                    "Resistance (60d)": f"${r['resistance']:.2f} (<span style='color:#28a745;'>{r['resistance_pct']:+.1f}%</span>)"
+                    "Support (10d)": f"${r['support']:.2f} (<span style='color:#dc3545;'>{r['support_pct']:.1f}%</span>)",
+                    "Resistance (10d)": f"${r['resistance']:.2f} (<span style='color:#28a745;'>{r['resistance_pct']:+.1f}%</span>)"
                 })
             
             df_html = pd.DataFrame(summary_data).to_html(escape=False, index=False)
@@ -259,5 +261,5 @@ if st.button("🔍 Scan Aandelen") or input_tickers:
                             st.markdown(get_short_float_html(r['short_float']), unsafe_allow_html=True)
                         
                         st.markdown("---")
-                        st.write(f"**Support:** ${r['support']:.2f} ({r['support_pct']:.1f}%)")
-                        st.write(f"**Resistance:** ${r['resistance']:.2f} ({r['resistance_pct']:+.1f}%)")
+                        st.write(f"**Swing Support (10d):** ${r['support']:.2f} ({r['support_pct']:.1f}%)")
+                        st.write(f"**Swing Resistance (10d):** ${r['resistance']:.2f} ({r['resistance_pct']:+.1f}%)")
